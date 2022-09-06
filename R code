@@ -1,0 +1,145 @@
+GlobalAlign <- function(match, mismatch, gap, a, b){
+
+  library(stringr)
+  #Checking if all parameter in the function are correct
+  if (is.numeric(match) != TRUE) {
+    stop(print("Match value should be an integer"))
+
+  }
+  if (is.numeric(mismatch) != TRUE) {
+    stop(print("Mismatch value should be an integer"))
+
+  }
+
+  if (is.numeric(gap) != TRUE) {
+    stop(print("Gap value should be an integer"))
+
+  }
+
+  if (is.character(a) != TRUE) {
+    stop(print("The first sequence is not a string"))
+
+  }
+
+  if (is.character(b) != TRUE) {
+    stop(print("The second sequence is not a string"))
+
+  }
+
+
+  #Transforming match, mismatch and gap values in integers
+  match <- as.integer(match)
+  mismatch <- as.integer(mismatch)
+  gap <- as.integer(gap)
+
+  #Now checking that the values are in according with the SW algorithm
+
+  if (match <= 0) {
+    stop(print("Match value should be greater than zero"))
+  }
+
+  if (mismatch > 0) {
+    stop(print("Mismatch value should be less than zero or equal zero"))
+  }
+
+  if (gap > 0) {
+    stop(print("Gap value should be less than zero or equal zero"))
+  }
+
+  #Preparing the matrix of the algorithm
+
+  a_splitted <- unlist(strsplit(a, "")) #Splitting the first sequence string
+  b_splitted <- unlist(strsplit(b, "")) #splitting the second sequence string
+
+  cols <- nchar(a) + 1 #Setting the length of the rows and the columns
+  rows <- nchar(b) + 1
+
+  m <- matrix(0, rows, cols) #Creating the matrix and fill it with zeros
+
+  #Initializing the matrix with the gap penality
+  lena <- nchar(a)
+  lenb <- nchar(b)
+  m[1,] <- cumsum(c(0, rep(gap, lena)))
+  m[,1] <- cumsum(c(0, rep(gap, lenb)))
+
+
+  #Assigning sequences to the row names and the column names of the matrix m
+  coln <- c("", a_splitted)
+  rown<- c("", b_splitted)
+  colnames(m) <- coln
+  rownames(m) <- rown
+
+  #Creating a second matrix to store the direction
+  m1 <- m
+  m1[1,] <- "left"
+  m1[,1] <- "up"
+  m1[1,1] <- 0
+
+  #Now filling the matrix with the scores given in the function's arguments
+  #Recalling Needleman-Wunsch algortithm:
+  #S(i,j) = max { S(i-1,j-1) + s(ai,bj),
+  #S(i-1,j) - Wx,
+  #S(i,j-1) - Wy }
+
+  for (i in 2:rows){
+    for (j in 2:cols){
+      up <- m[i -1, j] + gap #Up score means a gap in the seq on the columns
+      left <- m[i, j -1] + gap #Left score means a gap in the seq on the rows
+      #Diagonal is the value with the match or the mismatch
+      diagonal <- if (rownames(m)[i] == colnames(m)[j]){
+        m[i -1, j -1] + match
+      } else {
+        m[i -1, j -1] + mismatch
+      }
+      maxx <- max(up, left, diagonal) #Selecting the maximum value
+      m[i,j] <- maxx
+      #Storing the direction in the second matrix
+      if (maxx == up) {
+        m1[i,j] <- "up"
+      } else if (maxx == left){
+        m1[i,j] <- "left"
+      } else if (maxx == diagonal){
+        m1[i,j] <- "diagonal"
+      }
+    }
+  }
+
+  #Traceback, starting from the last cell of the matrix
+  #Creating ala and alb to store the alignment
+  ala <- character()
+  alb <- character()
+
+  #While we are in the matrix, doing the traceback using the direction matrix
+  #if the direction matrix says up, inserting a gap in the seq on the column and
+  #reporting the value on the row; if the direction matrix says left, inserting
+  #a gap in the seq on the rows and reporting the value on the column; if the
+  #direction matrix says diagonal, reporting both values on the row and on the
+  #column
+
+  while (i > 1 & j > 1){
+
+    if (m1[i,j] == "up"){
+      ala <- c("-", ala)
+      alb <- c(rownames(m1)[i], alb)
+      i <- i -1
+    } else if (m1[i,j] == "left") {
+      ala <- c(colnames(m1)[j], ala)
+      alb <- c("-", alb)
+      j <- j -1
+    } else if (m1[i,j] == "diagonal") {
+      ala <- c(colnames(m1)[j], ala)
+      alb <- c(rownames(m1)[i], alb)
+      i <- i -1
+      j <- j -1
+    }
+  }
+
+  #Removing NA values from the output
+  ala <- ala[!is.na(ala)]
+  alb <- alb[!is.na(alb)]
+  #Printing the alignment
+  cat(paste0(ala, collapse=''), "\n")
+  cat(paste0(alb, collapse=''), "\n")
+
+
+}
